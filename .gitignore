@@ -8,3 +8,14 @@ Thumbs.db
 
 # Local build/test artifacts
 *.log
+
+.git
+.github
+Ressources
+test
+README.md
+
+**/.git
+**/.gitignore
+**/docker-compose.yml
+**/compose.yml
