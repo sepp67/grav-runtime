@@ -11,8 +11,12 @@ Thumbs.db
 
 .git
 .github
-Ressources
-test
+
+# Local reference projects
+/Ressources/
+
+# Local test harness
+/test/
 README.md
 
 **/.git
