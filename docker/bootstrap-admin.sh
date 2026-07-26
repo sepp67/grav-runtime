@@ -48,6 +48,26 @@ if [ "$set_count" -lt 3 ]; then
   exit 1
 fi
 
+# ── 1bis. Validate the optional admin permission type ───────────────────────
+#
+# GRAV_ADMIN_TYPE controls which admin permission tree(s) the bootstrapped
+# account receives — the same choice `bin/plugin login new-user` asks
+# interactively ("Admin type: [admin] / [api] / [both]"):
+#   admin -> classic Admin plugin only (access.admin.*)
+#   api   -> Admin2/API only (access.api.*)
+#   both  -> both trees, matching a manual "Admin type: both" CLI account
+#            (required for the modern Admin interface to be fully functional)
+# Defaults to "both" so a bootstrapped account is functional out of the box.
+
+ADMIN_TYPE="${GRAV_ADMIN_TYPE:-both}"
+case "$ADMIN_TYPE" in
+  admin | api | both) ;;
+  *)
+    log "ERROR: invalid GRAV_ADMIN_TYPE value '$ADMIN_TYPE' — must be one of: admin, api, both."
+    exit 1
+    ;;
+esac
+
 # ── 2. Never overwrite an existing account ──────────────────────────────────
 
 ACCOUNT_FILE="$ACCOUNTS_DIR/${GRAV_ADMIN_USER}.yaml"
@@ -80,21 +100,23 @@ cd "$GRAV_ROOT"
 #   8. Full name (REQUIRED — empty value fails validation)
 #   9. Title (blank=default)                 10. State (blank=enabled)
 #
-# Permissions: always "b" (admin+site). Admin type: always "admin".
-# Full name has no universally meaningful default, so it falls back to
-# "Administrator" when GRAV_ADMIN_FULLNAME is not provided.
+# Permissions: always "b" (admin+site). Admin type: GRAV_ADMIN_TYPE (see
+# above, defaults to "both"). Full name has no universally meaningful
+# default, so it falls back to "Administrator" when GRAV_ADMIN_FULLNAME is
+# not provided.
 FULLNAME="${GRAV_ADMIN_FULLNAME:-Administrator}"
 LANGUAGE="${GRAV_ADMIN_LANGUAGE:-}"
 TITLE="${GRAV_ADMIN_TITLE:-}"
 
 set +e
 BOOTSTRAP_OUTPUT=$(
-  printf '%s\n%s\n%s\n%s\n%s\nb\nadmin\n%s\n%s\n\n' \
+  printf '%s\n%s\n%s\n%s\n%s\nb\n%s\n%s\n%s\n\n' \
     "$GRAV_ADMIN_USER" \
     "$GRAV_ADMIN_PASSWORD" \
     "$GRAV_ADMIN_PASSWORD" \
     "$GRAV_ADMIN_EMAIL" \
     "$LANGUAGE" \
+    "$ADMIN_TYPE" \
     "$FULLNAME" \
     "$TITLE" \
   | bin/plugin login new-user 2>&1

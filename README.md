@@ -160,6 +160,7 @@ fonctionnement normal du site.
 | `GRAV_ADMIN_USER` | Non* | — | Nom d'utilisateur du compte admin à créer |
 | `GRAV_ADMIN_PASSWORD` | Non* | — | Mot de passe (jamais loggé, jamais en argument CLI) |
 | `GRAV_ADMIN_EMAIL` | Non* | — | Email du compte admin à créer |
+| `GRAV_ADMIN_TYPE` | Non | `both` | Type d'accès admin du compte créé : `admin` (Admin classique, `admin.*`), `api` (Admin2/API, `api.*`) ou `both` (les deux — équivalent à un compte créé manuellement avec "Admin type: both"). Valeur invalide → échec explicite du démarrage. |
 | `GRAV_ADMIN_FULLNAME` | Non | `Administrator` | Nom complet (champ obligatoire côté Grav) |
 | `GRAV_ADMIN_TITLE` | Non | défaut Grav | Titre du compte |
 | `GRAV_ADMIN_LANGUAGE` | Non | défaut Grav (`en`) | Langue du compte |
@@ -183,6 +184,24 @@ variables partiellement définies → erreur bloquante, le conteneur ne démarre
 Un compte déjà existant (`user/accounts/<user>.yaml` présent) n'est **jamais écrasé** : le
 bootstrap est ignoré silencieusement (idempotent). Le mot de passe est transmis à la CLI officielle
 (`bin/plugin login new-user`) uniquement via stdin, jamais en argument CLI ni en log.
+
+### Type d'accès admin (`GRAV_ADMIN_TYPE`)
+
+L'interface Admin moderne (Admin2) s'appuie sur le plugin `api` (arborescence de droits `api.*`),
+distincte de l'arborescence historique du plugin Admin classique (`admin.*`). La CLI officielle
+`bin/plugin login new-user` pose explicitement cette question ("Admin type: `admin` / `api` /
+`both`") ; c'est le même mécanisme que `grav-runtime` pilote, via `GRAV_ADMIN_TYPE` :
+
+| Valeur | Effet |
+|---|---|
+| `admin` | Accès à l'Admin classique uniquement (`access.admin.*`) |
+| `api` | Accès à Admin2/API uniquement (`access.api.*`) |
+| `both` (défaut) | Les deux — équivalent à un compte créé manuellement avec "Admin type: both", nécessaire pour que toutes les fonctionnalités de l'interface Admin moderne fonctionnent |
+
+Une valeur hors de cette liste fait échouer le démarrage du conteneur avec un message explicite,
+avant toute tentative de création de compte. Ce choix ne modifie ni la politique stricte sur les
+trois variables obligatoires, ni l'idempotence : un compte déjà présent n'est jamais recréé ni
+modifié, quelle que soit la valeur de `GRAV_ADMIN_TYPE`.
 
 Si le bootstrap est explicitement demandé (les 3 variables sont fournies) mais ne peut pas
 aboutir — plugin `login` absent, échec de la CLI — le conteneur s'arrête également en erreur,
@@ -330,6 +349,61 @@ docker logs grav-admin-test | grep bootstrap-admin   # "already exists — skipp
 ```bash
 docker run --rm -e GRAV_ADMIN_USER=admin -e GRAV_ADMIN_PASSWORD=x <volumes> grav-runtime:test
 echo $?   # attendu : 1, aucun service démarré
+```
+
+**Test 3ter — Aucune variable admin fournie**
+```bash
+docker run --rm -p 8083:80 <volumes vides> grav-runtime:test &
+sleep 5
+docker logs <container> | grep bootstrap-admin
+# attendu : "not set — admin bootstrap disabled." ; aucun fichier créé sous user/accounts
+```
+
+**Test 3quater — `GRAV_ADMIN_TYPE=both` (défaut)**
+```bash
+docker run --rm --name grav-admin-both -e GRAV_ADMIN_USER=admin \
+  -e GRAV_ADMIN_PASSWORD=ChangeMe123 -e GRAV_ADMIN_EMAIL=admin@example.com \
+  <volumes vides> grav-runtime:test
+docker exec grav-admin-both sed -n '/^access:/,/^fullname:/p' /var/www/html/user/accounts/admin.yaml
+# attendu : bloc "admin:" ET bloc "api:" tous deux présents sous "access:"
+```
+Résultat identique sans fixer `GRAV_ADMIN_TYPE` (valeur par défaut).
+
+**Test 3quinquies — `GRAV_ADMIN_TYPE=admin`**
+```bash
+docker run --rm --name grav-admin-classic -e GRAV_ADMIN_USER=admin \
+  -e GRAV_ADMIN_PASSWORD=ChangeMe123 -e GRAV_ADMIN_EMAIL=admin@example.com \
+  -e GRAV_ADMIN_TYPE=admin <volumes vides> grav-runtime:test
+docker exec grav-admin-classic sed -n '/^access:/,/^fullname:/p' /var/www/html/user/accounts/admin.yaml
+# attendu : bloc "admin:" présent, bloc "api:" absent
+```
+
+**Test 3sexies — `GRAV_ADMIN_TYPE=api`**
+```bash
+docker run --rm --name grav-admin-api -e GRAV_ADMIN_USER=admin \
+  -e GRAV_ADMIN_PASSWORD=ChangeMe123 -e GRAV_ADMIN_EMAIL=admin@example.com \
+  -e GRAV_ADMIN_TYPE=api <volumes vides> grav-runtime:test
+docker exec grav-admin-api sed -n '/^access:/,/^fullname:/p' /var/www/html/user/accounts/admin.yaml
+# attendu : bloc "api:" présent, bloc "admin:" absent
+```
+
+**Test 3septies — `GRAV_ADMIN_TYPE` invalide**
+```bash
+docker run --rm -e GRAV_ADMIN_USER=admin -e GRAV_ADMIN_PASSWORD=ChangeMe123 \
+  -e GRAV_ADMIN_EMAIL=admin@example.com -e GRAV_ADMIN_TYPE=bogus \
+  <volumes vides> grav-runtime:test
+echo $?   # attendu : 1, message "invalid GRAV_ADMIN_TYPE value 'bogus'", aucun service démarré
+```
+
+**Test 3octies — Non-écrasement d'un compte existant**
+```bash
+# à la suite du Test 3quinquies (compte "admin" de type "admin" déjà créé sur le volume)
+docker run --rm --name grav-admin-noop -e GRAV_ADMIN_USER=admin \
+  -e GRAV_ADMIN_PASSWORD=AutreMotDePasse -e GRAV_ADMIN_EMAIL=autre@example.com \
+  -e GRAV_ADMIN_TYPE=both <même volume accounts que le Test 3quinquies> grav-runtime:test
+docker logs grav-admin-noop | grep bootstrap-admin   # "already exists — skipping bootstrap"
+docker exec grav-admin-noop sed -n '/^access:/,/^fullname:/p' /var/www/html/user/accounts/admin.yaml
+# attendu : toujours bloc "admin:" seul (type/mot de passe/email inchangés malgré les nouvelles variables)
 ```
 
 **Test 4 — Initialisation des données (seed)**
