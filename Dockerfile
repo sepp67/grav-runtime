@@ -35,6 +35,15 @@ RUN apk add --no-cache \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install gd zip intl mbstring opcache
 
+# The apk nginx package ships /var/lib/nginx as nginx:nginx mode 0750, and
+# /var/lib/nginx/tmp as nginx:nginx mode 0700. Workers run as www-data
+# (docker/nginx.conf "user www-data;"), which is neither the owner nor in
+# the nginx group, so it lacks the traversal bit on /var/lib/nginx itself
+# — nginx fails to buffer any request body (uploads, large POSTs) with
+# "open() ... Permission denied" and returns a 500 before PHP-FPM is ever
+# reached. Both levels need to be traversable/writable by www-data.
+RUN chown www-data:www-data /var/lib/nginx /var/lib/nginx/tmp
+
 WORKDIR /var/www/html
 
 # Download, verify, extract. Fails the build clearly on any mismatch or
@@ -58,6 +67,12 @@ RUN set -eu; \
     rm -rf user/pages user/accounts user/data user/config; \
     mkdir -p user/pages user/accounts user/data user/config; \
     chown -R www-data:www-data /var/www/html
+
+# Targeted overlay on top of the vendored quark2 (footer credit line only —
+# see docker/theme-overrides/README.md). Applied after the chown above, so
+# the overlaid file needs its own --chown; everything else vendored from the
+# official zip is left untouched.
+COPY --chown=www-data:www-data docker/theme-overrides/quark2/ user/themes/quark2/
 
 # Seed directory for a child image's initial content. Empty by default:
 # grav-runtime ships no business content of its own. A child image
