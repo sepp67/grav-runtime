@@ -20,8 +20,8 @@ Cette séparation permet de :
 
 ```mermaid
 graph TD
-    A[grav-runtime<br/>Nginx + PHP-FPM + Grav Core] --> B[Image applicative<br/>thèmes + plugins + seed]
-    B --> C[ansible-role-grav-site<br/>Déploiement + volumes + secrets]
+    A["grav-runtime<br/>Nginx + PHP-FPM + Grav Core"] --> B["Image applicative<br/>thèmes + plugins + seed"]
+    B --> C["ansible-role-grav-site<br/>Déploiement + volumes + secrets"]
 
 # grav-runtime
 
