@@ -1,5 +1,30 @@
 # grav-runtime
 
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Docker](https://img.shields.io/badge/Docker-ready-blue)](https://ghcr.io/sepp67/grav-runtime)
+
+**Socle Docker générique et sécurisé pour exécuter des sites Grav CMS en production.**
+
+`grav-runtime` fournit uniquement la couche technique (Nginx + PHP-FPM + Grav Core + Admin).  
+Il ne contient **aucun contenu métier**. Les thèmes, plugins et pages sont ajoutés par des images filles.
+
+Cette séparation permet de :
+- reconstruire et mettre à jour le runtime indépendamment des sites
+- garantir une base technique homogène et vérifiée (SHA-256)
+- faciliter le rollback et la reproductibilité
+
+→ Fait partie d’une stack en 3 couches :  
+[grav-runtime](https://github.com/sepp67/grav-runtime) → [projet-gites](https://github.com/sepp67/projet-gites) → [ansible-role-grav-site](https://github.com/sepp67/ansible-role-grav-site)
+
+## Architecture de la stack
+
+```mermaid
+graph TD
+    A[grav-runtime<br/>Nginx + PHP-FPM + Grav Core] --> B[Image applicative<br/>thèmes + plugins + seed]
+    B --> C[ansible-role-grav-site<br/>Déploiement + volumes + secrets]
+
+# grav-runtime
+
 Socle Docker générique et réutilisable pour exécuter des sites [Grav CMS](https://getgrav.org/)
 (Core + Admin) avec Nginx et PHP-FPM dans un même conteneur.
 
