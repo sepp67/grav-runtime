@@ -21,7 +21,7 @@ Cette séparation permet de :
 graph TD
     A["grav-runtime<br/>Nginx + PHP-FPM + Grav Core"] --> B["Image applicative<br/>thèmes + plugins + seed"]
     B --> C["ansible-role-grav-site<br/>Déploiement + volumes + secrets"]
-```mermaid
+```
 # grav-runtime
 
 Socle Docker générique et réutilisable pour exécuter des sites [Grav CMS](https://getgrav.org/)
