@@ -17,11 +17,11 @@ Cette séparation permet de :
 [grav-runtime](https://github.com/sepp67/grav-runtime) → [projet-gites](https://github.com/sepp67/projet-gites) → [ansible-role-grav-site](https://github.com/sepp67/ansible-role-grav-site)
 
 ## Architecture de la stack
-```mermaid
+
 graph TD
     A["grav-runtime<br/>Nginx + PHP-FPM + Grav Core"] --> B["Image applicative<br/>thèmes + plugins + seed"]
     B --> C["ansible-role-grav-site<br/>Déploiement + volumes + secrets"]
-```
+
 # grav-runtime
 
 Socle Docker générique et réutilisable pour exécuter des sites [Grav CMS](https://getgrav.org/)
